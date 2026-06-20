@@ -47,6 +47,7 @@ pub struct App {
     pub selected: usize,
     pub list_state: ListState,
     pub focus: Focus,
+    pub show_detail: bool,
     pub detail_scroll: u16,
 
     pub dirty_only: bool,
@@ -75,6 +76,7 @@ impl App {
             selected: 0,
             list_state: ListState::default(),
             focus: Focus::List,
+            show_detail: false,
             detail_scroll: 0,
             dirty_only,
             filter: String::new(),
@@ -238,15 +240,16 @@ impl App {
         match key.code {
             KeyCode::Char('c') if ctrl => self.should_quit = true,
             KeyCode::Char('q') => self.should_quit = true,
-            // Esc backs out of the detail pane first; only quits from the list.
+            // Esc closes the detail panel if open; otherwise quits.
             KeyCode::Esc => {
-                if self.focus == Focus::Detail {
+                if self.show_detail {
+                    self.show_detail = false;
                     self.focus = Focus::List;
                 } else {
                     self.should_quit = true;
                 }
             }
-            KeyCode::Tab => self.toggle_focus(),
+            KeyCode::Tab => self.toggle_detail(),
             KeyCode::Char('d') => {
                 self.dirty_only = !self.dirty_only;
                 self.clamp_selection();
@@ -327,10 +330,13 @@ impl App {
         }
     }
 
-    fn toggle_focus(&mut self) {
-        self.focus = match self.focus {
-            Focus::List => Focus::Detail,
-            Focus::Detail => Focus::List,
+    /// Show/hide the detail panel. Showing it moves focus there; hiding returns to the list.
+    fn toggle_detail(&mut self) {
+        self.show_detail = !self.show_detail;
+        self.focus = if self.show_detail {
+            Focus::Detail
+        } else {
+            Focus::List
         };
     }
 
@@ -378,6 +384,8 @@ impl App {
                 self.clamp_selection();
             }
             Some(Row::File { .. }) => {
+                // Opening a file's diff reveals the detail panel.
+                self.show_detail = true;
                 self.focus = Focus::Detail;
             }
             None => {}

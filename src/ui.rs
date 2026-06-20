@@ -22,13 +22,16 @@ pub fn render(f: &mut Frame, app: &mut App) {
 
     render_title(f, app, chunks[0]);
 
-    let body = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(45), Constraint::Percentage(55)])
-        .split(chunks[1]);
-
-    render_list(f, app, body[0]);
-    render_detail(f, app, body[1]);
+    if app.show_detail {
+        let body = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(45), Constraint::Percentage(55)])
+            .split(chunks[1]);
+        render_list(f, app, body[0]);
+        render_detail(f, app, body[1]);
+    } else {
+        render_list(f, app, chunks[1]);
+    }
     render_help(f, app, chunks[2]);
 
     if app.input_mode == InputMode::Actions {
@@ -236,7 +239,7 @@ fn render_help(f: &mut Frame, app: &App, area: Rect) {
         );
         return;
     }
-    let help = "j/k move · l/↵ expand/diff · h collapse · Tab pane · d dirty · / filter · a actions · r rescan · q quit";
+    let help = "j/k move · l/↵ expand/diff · h collapse · Tab panel · d dirty · / filter · a actions · r rescan · q quit";
     f.render_widget(
         Line::styled(help, Style::default().fg(Color::DarkGray)),
         area,

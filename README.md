@@ -44,16 +44,19 @@ git-substatus [ROOT] [--depth N] [--dirty-only] [--no-watch] [--config PATH]
 | Key | Action |
 |-----|--------|
 | `j` / `k` / ↓ ↑ | move (or scroll the diff pane when it's focused) |
-| `l` / `Enter` / → | expand a repo; on a file, focus the diff pane |
+| `l` / `Enter` / → | expand a repo; on a file, open its diff (reveals the detail panel) |
 | `h` / ← | collapse |
-| `Tab` | switch focus between the list and the diff pane |
+| `Tab` | show/hide the detail panel (hidden by default) |
 | `d` | toggle dirty-only |
 | `/` | fuzzy filter by repo name (`Enter` keep, `Esc` clear) |
 | `a` | actions popup |
 | `r` | force rescan all |
 | `g` / `G` | top / bottom |
-| `Esc` | leave the diff pane, or quit from the list |
+| `Esc` | close the detail panel, or quit from the list |
 | `q` / `Ctrl-c` | quit |
+
+The detail panel (diff / repo summary) is hidden by default — the repo list spans the
+full width. Open a file or press `Tab` to reveal it.
 
 ## Actions
 
