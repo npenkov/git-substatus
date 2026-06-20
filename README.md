@@ -104,3 +104,7 @@ Open it in a 50-column right-hand pane for the current directory:
 ```tmux
 bind C-s split-window -h -l 50 "cd '#{pane_current_path}' && git-substatus"
 ```
+
+## License
+
+[MIT](LICENSE) © Nick Penkov
