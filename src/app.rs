@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::widgets::ListState;
 
-use crate::actions::Action;
+use crate::actions::{Action, Ctx};
 use crate::diff::{self, DiffLine};
 use crate::event::AppEvent;
 use crate::model::RepoStatus;
@@ -61,7 +61,7 @@ pub struct App {
     pending: HashSet<PathBuf>,
 
     pub should_quit: bool,
-    pub suspend_request: Option<(Action, PathBuf)>,
+    pub suspend_request: Option<(Action, Ctx)>,
     pub status_msg: Option<String>,
     pub redraw: bool,
 }
@@ -307,25 +307,45 @@ impl App {
     }
 
     fn run_action(&mut self, action: Action) {
-        let Some(repo) = self.selected_repo_path() else {
+        let Some(ctx) = self.action_ctx() else {
             return;
         };
         if action.suspend {
             // Defer to main, which owns the terminal.
-            self.suspend_request = Some((action, repo));
+            self.suspend_request = Some((action, ctx));
         } else {
-            match crate::actions::spawn_detached(&action, &repo) {
+            match crate::actions::spawn_detached(&action, &ctx) {
                 Ok(()) => self.status_msg = Some(format!("ran: {}", action.name)),
                 Err(e) => self.status_msg = Some(format!("action failed: {e}")),
             }
         }
     }
 
-    /// The repo path for the current selection (header or file row).
-    pub fn selected_repo_path(&self) -> Option<PathBuf> {
+    /// Substitution context for actions, derived from the current selection.
+    /// A file row targets the file (and its directory); a repo row targets the repo root.
+    pub fn action_ctx(&self) -> Option<Ctx> {
         match self.current_row() {
-            Some(Row::Repo(ri)) => Some(self.repos[ri].path.clone()),
-            Some(Row::File { repo, .. }) => Some(self.repos[repo].path.clone()),
+            Some(Row::Repo(ri)) => {
+                let repo = self.repos[ri].path.clone();
+                Some(Ctx {
+                    path: repo.clone(),
+                    dir: repo.clone(),
+                    repo,
+                })
+            }
+            Some(Row::File { repo, file }) => {
+                let repo_path = self.repos[repo].path.clone();
+                let item = repo_path.join(&self.repos[repo].entries[file].rel_path);
+                let dir = item
+                    .parent()
+                    .map(|p| p.to_path_buf())
+                    .unwrap_or_else(|| repo_path.clone());
+                Some(Ctx {
+                    path: item,
+                    dir,
+                    repo: repo_path,
+                })
+            }
             None => None,
         }
     }

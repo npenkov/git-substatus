@@ -1,6 +1,6 @@
 //! User-configurable shell actions run against the selected repo.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 use serde::Deserialize;
@@ -25,6 +25,27 @@ pub struct Action {
 impl Action {
     pub fn key_char(&self) -> Option<char> {
         self.key.chars().next()
+    }
+}
+
+/// Substitution context derived from the currently selected item.
+///
+/// - `path`: the selected item — the file's absolute path when a file is selected,
+///   otherwise the repo root.
+/// - `dir`: a directory to run in — the file's parent directory when a file is
+///   selected, otherwise the repo root. Always a valid directory (default `cwd`).
+/// - `repo`: the repo root.
+#[derive(Clone, Debug)]
+pub struct Ctx {
+    pub path: PathBuf,
+    pub dir: PathBuf,
+    pub repo: PathBuf,
+}
+
+impl Ctx {
+    /// What the action targets, for display in the popup title.
+    pub fn label(&self) -> String {
+        self.path.display().to_string()
     }
 }
 
@@ -58,14 +79,14 @@ pub fn defaults() -> Vec<Action> {
         Action {
             key: "t".into(),
             name: "tmux split here".into(),
-            command: "tmux split-window -h -c {path}".into(),
+            command: "tmux split-window -h -c {dir}".into(),
             cwd: None,
             suspend: false,
         },
         Action {
             key: "w".into(),
             name: "tmux window here".into(),
-            command: "tmux new-window -c {path}".into(),
+            command: "tmux new-window -c {dir}".into(),
             cwd: None,
             suspend: false,
         },
@@ -73,29 +94,44 @@ pub fn defaults() -> Vec<Action> {
             key: "g".into(),
             name: "lazygit".into(),
             command: "lazygit".into(),
-            cwd: Some("{path}".into()),
+            cwd: Some("{repo}".into()),
             suspend: true,
         },
         Action {
+            // Opens the selected file, or the repo dir if a repo row is selected.
             key: "v".into(),
             name: "nvim".into(),
-            command: "nvim".into(),
-            cwd: Some("{path}".into()),
+            command: "nvim {path}".into(),
+            cwd: Some("{dir}".into()),
             suspend: true,
         },
     ]
 }
 
-/// Build the `Command` for an action against `repo_path`, without running it.
-fn build(action: &Action, repo_path: &Path) -> Command {
-    let path_str = repo_path.to_string_lossy().to_string();
-    let escaped = shell_words::quote(&path_str).into_owned();
-    let cmd_str = action.command.replace("{path}", &escaped);
+/// Build the `Command` for an action against the selection `ctx`, without running it.
+///
+/// In `command`, `{path}`/`{dir}`/`{repo}` are substituted shell-escaped; in `cwd`
+/// they are substituted raw (it is a path, not parsed by a shell). `cwd` defaults to
+/// `{dir}` — the directory of the selected item.
+fn build(action: &Action, ctx: &Ctx) -> Command {
+    let path = ctx.path.to_string_lossy();
+    let dir = ctx.dir.to_string_lossy();
+    let repo = ctx.repo.to_string_lossy();
+
+    let q = |s: &str| shell_words::quote(s).into_owned();
+    let cmd_str = action
+        .command
+        .replace("{path}", &q(&path))
+        .replace("{dir}", &q(&dir))
+        .replace("{repo}", &q(&repo));
+
     let cwd = action
         .cwd
-        .as_ref()
-        .map(|c| c.replace("{path}", &path_str))
-        .unwrap_or_else(|| path_str.clone());
+        .as_deref()
+        .unwrap_or("{dir}")
+        .replace("{path}", &path)
+        .replace("{dir}", &dir)
+        .replace("{repo}", &repo);
 
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
     let mut cmd = Command::new(shell);
@@ -105,8 +141,8 @@ fn build(action: &Action, repo_path: &Path) -> Command {
 
 /// Run a non-suspending action: spawn detached with stdio nulled so it can't draw
 /// over our TUI (right for tmux split/new-window/popup).
-pub fn spawn_detached(action: &Action, repo_path: &Path) -> std::io::Result<()> {
-    let mut cmd = build(action, repo_path);
+pub fn spawn_detached(action: &Action, ctx: &Ctx) -> std::io::Result<()> {
+    let mut cmd = build(action, ctx);
     cmd.stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
@@ -115,6 +151,6 @@ pub fn spawn_detached(action: &Action, repo_path: &Path) -> std::io::Result<()> 
 
 /// Build a suspending command (interactive program that owns this terminal).
 /// The caller is responsible for restoring/re-initialising the terminal around it.
-pub fn build_suspending(action: &Action, repo_path: &Path) -> Command {
-    build(action, repo_path)
+pub fn build_suspending(action: &Action, ctx: &Ctx) -> Command {
+    build(action, ctx)
 }

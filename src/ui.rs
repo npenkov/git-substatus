@@ -248,9 +248,9 @@ fn render_help(f: &mut Frame, app: &App, area: Rect) {
 
 fn render_actions_popup(f: &mut Frame, app: &App) {
     let target = app
-        .selected_repo_path()
-        .map(|p| p.display().to_string())
-        .unwrap_or_else(|| "no repo".into());
+        .action_ctx()
+        .map(|c| c.label())
+        .unwrap_or_else(|| "no selection".into());
 
     let mut lines: Vec<Line> = Vec::new();
     for a in &app.actions {

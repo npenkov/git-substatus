@@ -74,13 +74,28 @@ suspend = false        # spawns in tmux; the TUI keeps running
 key = "g"
 name = "lazygit"
 command = "lazygit"
-cwd = "{path}"
+cwd = "{repo}"
 suspend = true         # takes over this terminal; TUI is restored on exit
+
+[[actions]]
+key = "v"
+name = "nvim"
+command = "nvim {path}"  # opens the selected file (or the dir if a repo is selected)
+cwd = "{dir}"
+suspend = true
 ```
 
-- `{path}` is replaced with the selected repo's path (shell-escaped in `command`).
-- `suspend = true` for interactive programs that need this terminal; `false` for things
-  that appear elsewhere (tmux panes/windows/popups).
+Actions run in the context of the **selected item**. These placeholders are substituted
+(shell-escaped in `command`; raw in `cwd`):
+
+- `{path}` — the selected item: the file's absolute path when a file row is selected,
+  otherwise the repo root.
+- `{dir}` — a directory to run in: the file's parent directory when a file is selected,
+  otherwise the repo root. This is the default `cwd`.
+- `{repo}` — the repo root.
+
+`suspend = true` for interactive programs that need this terminal; `false` for things
+that appear elsewhere (tmux panes/windows/popups).
 
 ## tmux
 

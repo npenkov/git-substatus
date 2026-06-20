@@ -78,8 +78,8 @@ fn run(
         }
 
         // 3. Handle a deferred suspend action (interactive program in this terminal).
-        if let Some((action, path)) = app.suspend_request.take() {
-            run_suspended(terminal, &action, &path)?;
+        if let Some((action, ctx)) = app.suspend_request.take() {
+            run_suspended(terminal, &action, &ctx)?;
             app.redraw = true;
         }
 
@@ -96,14 +96,14 @@ fn run(
     Ok(())
 }
 
-/// Leave the TUI, run an interactive command in `path`, then restore the TUI.
+/// Leave the TUI, run an interactive command for the selection, then restore the TUI.
 fn run_suspended(
     terminal: &mut DefaultTerminal,
     action: &actions::Action,
-    path: &std::path::Path,
+    ctx: &actions::Ctx,
 ) -> anyhow::Result<()> {
     ratatui::restore();
-    let status = actions::build_suspending(action, path).status();
+    let status = actions::build_suspending(action, ctx).status();
     // Re-enter the alternate screen / raw mode no matter how the child exited.
     *terminal = ratatui::init();
     terminal.clear()?;
