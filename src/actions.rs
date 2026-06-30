@@ -105,6 +105,22 @@ pub fn defaults() -> Vec<Action> {
             cwd: Some("{dir}".into()),
             suspend: true,
         },
+        Action {
+            // GUI editor: open the repo and don't suspend the TUI.
+            key: "z".into(),
+            name: "zed".into(),
+            command: "zed {repo}".into(),
+            cwd: Some("{repo}".into()),
+            suspend: false,
+        },
+        Action {
+            // GUI editor: open the repo and don't suspend the TUI.
+            key: "c".into(),
+            name: "vscode".into(),
+            command: "code {repo}".into(),
+            cwd: Some("{repo}".into()),
+            suspend: false,
+        },
     ]
 }
 
