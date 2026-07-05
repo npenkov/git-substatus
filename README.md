@@ -21,6 +21,21 @@ side pane. It is the "next level" successor to a polling shell script: status is
 
 ## Install
 
+### Homebrew
+
+```sh
+brew install npenkov/tap/git-substatus
+```
+
+Or tap first, then install:
+
+```sh
+brew tap npenkov/tap
+brew install git-substatus
+```
+
+### From source
+
 ```sh
 cargo install --path .
 ```
