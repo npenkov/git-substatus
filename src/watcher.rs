@@ -4,6 +4,7 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
+use notify::event::{AccessKind, AccessMode, EventKind};
 use notify::RecursiveMode;
 use notify_debouncer_full::{new_debouncer_opt, DebounceEventResult, Debouncer, NoCache};
 
@@ -27,8 +28,11 @@ pub fn spawn(repos: &[PathBuf], tx: Sender) -> Option<Watcher> {
         None,
         move |result: DebounceEventResult| {
             if let Ok(events) = result {
-                let paths: Vec<PathBuf> =
-                    events.into_iter().flat_map(|e| e.event.paths).collect();
+                let paths: Vec<PathBuf> = events
+                    .into_iter()
+                    .filter(|e| is_mutation(&e.event.kind))
+                    .flat_map(|e| e.event.paths)
+                    .collect();
                 if !paths.is_empty() {
                     let _ = tx.send(AppEvent::FsDirty(paths));
                 }
@@ -44,4 +48,17 @@ pub fn spawn(repos: &[PathBuf], tx: Sender) -> Option<Watcher> {
         let _ = debouncer.watch(repo, RecursiveMode::Recursive);
     }
     Some(debouncer)
+}
+
+/// Whether an event can change `git status`. On Linux, notify's inotify backend
+/// subscribes to `IN_OPEN`/`IN_CLOSE_NOWRITE`, so merely *reading* a tree reports
+/// `Access` events — including the reads our own scan does (gix opens every
+/// directory for the untracked walk). Forwarding those makes each scan trigger the
+/// next one, an endless rescan loop. FSEvents on macOS never reports reads.
+fn is_mutation(kind: &EventKind) -> bool {
+    match kind {
+        EventKind::Access(AccessKind::Close(AccessMode::Write)) => true,
+        EventKind::Access(_) => false,
+        _ => true,
+    }
 }
