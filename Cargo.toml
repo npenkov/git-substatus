@@ -1,6 +1,6 @@
 [package]
 name = "git-substatus"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "Interactive TUI to view git status across many repos at once — parallel scan, filesystem-watch refresh, in-app diffs, custom actions"
 license = "MIT"
